@@ -8,6 +8,7 @@ pg.init()
 Clock = pg.time.Clock()
 BulletClock = pg.time.Clock()
 fps = 27
+NEW_GOBLIN = pg.USEREVENT + 1
 
 background = pg.image.load(os.path.join("assets", "bg.jpg"))
 
@@ -20,12 +21,37 @@ class Game_Window:
         pg.display.set_caption(title)
 
     def redraw(self, objects):
+        player = objects["Player"]
+        goblins = objects["Goblins"]
+        bullets = objects["Bullets"]
+
         self.window.blit(background, (0, 0))
-        objects["Player"].draw(self.window)
-        for x in objects["Goblins"]:
+
+        if player.is_dead():
+            myfont = pg.font.SysFont("Comic Sans MS", 90)
+            label = myfont.render("Game Over", 1, (255, 0, 0))
+            self.window.blit(label, (100, 200))
+            pg.display.update()
+            return
+
+        Score = player.get_Score()
+        myfont = pg.font.SysFont("Comic Sans MS", 30)
+        label = myfont.render("Score {}".format(Score), 1, (0, 173, 52))
+
+        labelWidth = 0
+        while Score > 0:
+            Score //= 10
+            labelWidth += 1
+
+        self.window.blit(label, (400 - labelWidth * 5, 25))
+
+        player.draw(self.window)
+        for x in goblins:
             x.draw(self.window)
-        for x in objects["Bullets"]:
+
+        for x in bullets:
             x.draw(self.window)
+
         pg.display.update()
 
     def get_dimensions(self):
@@ -41,6 +67,8 @@ def gameplay(game_window: Game_Window, objects: list) -> list:
     for event in pg.event.get():
         if event.type == pg.QUIT:
             return -1
+        if event.type == NEW_GOBLIN:
+            objects["Goblins"].append(Goblin(player))
 
     keys = pg.key.get_pressed()
 
@@ -55,10 +83,6 @@ def gameplay(game_window: Game_Window, objects: list) -> list:
     else:
         player.jump(10)
 
-    if player.is_dead():
-        print("Game Over")
-        return -1
-
     if keys[pg.K_w] and BulletClock.tick() > 100:
         objects["Bullets"].append(Projectile(player))
 
@@ -69,7 +93,6 @@ def gameplay(game_window: Game_Window, objects: list) -> list:
     for goblin in objects["Goblins"]:
         if not goblin.move(game_window.get_dimensions()):
             objects["Goblins"].remove(goblin)
-            objects["Goblins"].append(Goblin(player))
         goblin.collision(objects["Bullets"])
 
     game_window.redraw(objects)
@@ -81,7 +104,7 @@ def main():
     goblin = Goblin(player)
     win = Game_Window((500, 480), "First Game")
     objects = {"Player" : player, "Goblins" : [goblin], "Bullets" : []}
-
+    pg.time.set_timer(NEW_GOBLIN, 8000)
     # Execute the mainloop.
     while True:
         objects = gameplay(win, objects)
